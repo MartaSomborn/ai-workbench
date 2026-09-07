@@ -28,12 +28,14 @@ Charlie,28,95
 
     assert response.status_code == 200
 
-    assert response.json() == {
-        "rows": 3,
-        "columns": 3,
-        "column_names": [
-            "name",
-            "age",
-            "score",
-        ],
-    }
+    payload = response.json()
+
+    assert payload["rows"] == 3
+    assert payload["columns"] == 3
+    assert payload["column_names"] == ["name", "age", "score"]
+    assert payload["numeric_columns"] == ["age", "score"]
+    assert len(payload["preview"]) == 3
+    assert "charts" in payload
+    assert "line" in payload["charts"]
+    assert "bar" in payload["charts"]
+    assert "scatter" in payload["charts"]

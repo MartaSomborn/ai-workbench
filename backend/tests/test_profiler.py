@@ -15,3 +15,10 @@ def test_profile_dataframe():
 
     assert result["rows"] == 3
     assert result["columns"] == 2
+    assert result["numeric_columns"] == ["temperature", "energy"]
+    assert len(result["preview"]) == 3
+    assert result["charts"]["line"]["y_key"] == "temperature"
+    assert len(result["charts"]["line"]["data"]) == 3
+    assert len(result["charts"]["bar"]["data"]) == 2
+    assert result["charts"]["scatter"]["x_key"] == "temperature"
+    assert result["charts"]["scatter"]["y_key"] == "energy"
