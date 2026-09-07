@@ -42,6 +42,22 @@ type DatasetProfile = {
   };
 };
 
+type AskAnalysis = {
+  summary: string;
+  findings: string[];
+  recommendations: string[];
+  evidence: Array<{
+    metric: string;
+    value: string | number;
+  }>;
+};
+
+type AskResponse = {
+  provider: string;
+  question: string;
+  analysis: AskAnalysis;
+};
+
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const prettyLabel = (raw: string): string =>
@@ -55,6 +71,10 @@ function App() {
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
+  const [askLoading, setAskLoading] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const [askResult, setAskResult] = useState<AskResponse | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -62,6 +82,8 @@ function App() {
     setFile(selectedFile);
     setProfile(null);
     setError(null);
+    setAskError(null);
+    setAskResult(null);
   };
 
   const handleUpload = async () => {
@@ -73,6 +95,8 @@ function App() {
     setLoading(true);
     setError(null);
     setProfile(null);
+    setAskError(null);
+    setAskResult(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -88,6 +112,40 @@ function App() {
       setError('Could not analyze the dataset.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAskDataset = async () => {
+    if (!file) {
+      setAskError('Please upload a CSV file first.');
+      return;
+    }
+
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) {
+      setAskError('Please enter a question about your dataset.');
+      return;
+    }
+
+    setAskLoading(true);
+    setAskError(null);
+    setAskResult(null);
+
+    const formData = new FormData();
+    formData.append('question', trimmedQuestion);
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post<AskResponse>(
+        `${API_BASE_URL}/datasets/ask`,
+        formData,
+      );
+
+      setAskResult(response.data);
+    } catch {
+      setAskError('Could not analyze your question.');
+    } finally {
+      setAskLoading(false);
     }
   };
 
@@ -348,6 +406,83 @@ function App() {
                   )}
                 </article>
               </div>
+            </section>
+
+            <section className='card'>
+              <h2>Ask Your Dataset</h2>
+              <p className='hint'>
+                Ask a natural-language question using the uploaded CSV.
+              </p>
+
+              <textarea
+                className='ask-input'
+                placeholder='What factors are related to high energy consumption?'
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                rows={3}
+              />
+
+              <button
+                className='action'
+                onClick={handleAskDataset}
+                disabled={askLoading || loading}
+              >
+                {askLoading ? 'Analyzing question...' : 'Analyze question'}
+              </button>
+
+              {askError && <p className='error'>{askError}</p>}
+
+              {askResult && (
+                <div className='ask-result'>
+                  <p className='provider-badge'>
+                    Provider: {askResult.provider}
+                  </p>
+                  <h3>Summary</h3>
+                  <p>{askResult.analysis.summary}</p>
+
+                  <h3>Findings</h3>
+                  <ul>
+                    {askResult.analysis.findings.map((finding, index) => (
+                      <li key={`finding-${index}`}>{finding}</li>
+                    ))}
+                  </ul>
+
+                  <h3>Recommendations</h3>
+                  <ul>
+                    {askResult.analysis.recommendations.map(
+                      (recommendation, index) => (
+                        <li key={`recommendation-${index}`}>
+                          {recommendation}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+
+                  <h3>Evidence</h3>
+                  {askResult.analysis.evidence.length > 0 ? (
+                    <div className='table-wrap'>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {askResult.analysis.evidence.map((item, index) => (
+                            <tr key={`evidence-${item.metric}-${index}`}>
+                              <td>{item.metric}</td>
+                              <td>{String(item.value)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className='hint'>No evidence returned.</p>
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

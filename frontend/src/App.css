@@ -141,6 +141,41 @@ td {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+.ask-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.ask-input:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #60a5fa;
+}
+
+.ask-result {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.provider-badge {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
