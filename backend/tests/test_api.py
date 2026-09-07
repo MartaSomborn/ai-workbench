@@ -39,3 +39,35 @@ Charlie,28,95
     assert "line" in payload["charts"]
     assert "bar" in payload["charts"]
     assert "scatter" in payload["charts"]
+
+
+def test_ask_dataset_with_mock_provider(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "mock")
+
+    csv_content = b"""timestamp,temperature,energy_consumption,occupancy
+2026-01-01 08:00,12.3,421,34
+2026-01-01 09:00,13.1,452,41
+2026-01-01 10:00,14.2,470,43
+"""
+
+    response = client.post(
+        "/datasets/ask",
+        data={"question": "What factors are related to high energy consumption?"},
+        files={
+            "file": (
+                "energy.csv",
+                BytesIO(csv_content),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["provider"] == "mock"
+    assert "analysis" in payload
+    assert "summary" in payload["analysis"]
+    assert isinstance(payload["analysis"].get("findings", []), list)
+    assert isinstance(payload["analysis"].get("evidence", []), list)
