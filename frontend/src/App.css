@@ -123,6 +123,30 @@ td {
   padding: 12px;
 }
 
+.chart-meta {
+  margin: 6px 0 10px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 .chart-box {
   height: 280px;
+}
+
+.chart-loading .chart-skeleton {
+  height: 280px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }

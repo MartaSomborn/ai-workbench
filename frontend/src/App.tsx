@@ -44,6 +44,12 @@ type DatasetProfile = {
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
+const prettyLabel = (raw: string): string =>
+  raw
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
@@ -66,6 +72,7 @@ function App() {
 
     setLoading(true);
     setError(null);
+    setProfile(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -83,6 +90,16 @@ function App() {
       setLoading(false);
     }
   };
+
+  const lineYAxisLabel = profile?.charts.line.y_key
+    ? prettyLabel(profile.charts.line.y_key)
+    : 'Value';
+  const scatterXAxisLabel = profile?.charts.scatter.x_key
+    ? prettyLabel(profile.charts.scatter.x_key)
+    : 'X';
+  const scatterYAxisLabel = profile?.charts.scatter.y_key
+    ? prettyLabel(profile.charts.scatter.y_key)
+    : 'Y';
 
   return (
     <div className='app'>
@@ -106,6 +123,27 @@ function App() {
           </button>
           {error && <p className='error'>{error}</p>}
         </section>
+
+        {loading && (
+          <section className='card'>
+            <h2>Charts</h2>
+            <p className='hint'>Preparing chart data from your dataset...</p>
+            <div className='chart-grid'>
+              <article className='chart-card chart-loading'>
+                <h3>Line Chart</h3>
+                <div className='chart-skeleton' />
+              </article>
+              <article className='chart-card chart-loading'>
+                <h3>Bar Chart</h3>
+                <div className='chart-skeleton' />
+              </article>
+              <article className='chart-card chart-loading'>
+                <h3>Scatter Plot</h3>
+                <div className='chart-skeleton' />
+              </article>
+            </div>
+          </section>
+        )}
 
         {profile && (
           <>
@@ -175,14 +213,33 @@ function App() {
               <div className='chart-grid'>
                 <article className='chart-card'>
                   <h3>Line Chart</h3>
+                  {profile.charts.line.y_key && (
+                    <p className='chart-meta'>
+                      {prettyLabel(profile.charts.line.y_key)} trend by sample
+                      index
+                    </p>
+                  )}
                   {profile.charts.line.y_key &&
                   profile.charts.line.data.length > 0 ? (
                     <div className='chart-box'>
                       <ResponsiveContainer width='100%' height='100%'>
                         <LineChart data={profile.charts.line.data}>
                           <CartesianGrid strokeDasharray='3 3' />
-                          <XAxis dataKey={profile.charts.line.x_key} />
-                          <YAxis />
+                          <XAxis
+                            dataKey={profile.charts.line.x_key}
+                            label={{
+                              value: 'Sample Index',
+                              position: 'insideBottom',
+                              offset: -6,
+                            }}
+                          />
+                          <YAxis
+                            label={{
+                              value: lineYAxisLabel,
+                              angle: -90,
+                              position: 'insideLeft',
+                            }}
+                          />
                           <Tooltip />
                           <Line
                             type='monotone'
@@ -203,13 +260,29 @@ function App() {
 
                 <article className='chart-card'>
                   <h3>Bar Chart</h3>
+                  <p className='chart-meta'>
+                    Mean and median across numeric columns
+                  </p>
                   {profile.charts.bar.data.length > 0 ? (
                     <div className='chart-box'>
                       <ResponsiveContainer width='100%' height='100%'>
                         <BarChart data={profile.charts.bar.data}>
                           <CartesianGrid strokeDasharray='3 3' />
-                          <XAxis dataKey={profile.charts.bar.x_key} />
-                          <YAxis />
+                          <XAxis
+                            dataKey={profile.charts.bar.x_key}
+                            label={{
+                              value: 'Column',
+                              position: 'insideBottom',
+                              offset: -6,
+                            }}
+                          />
+                          <YAxis
+                            label={{
+                              value: 'Value',
+                              angle: -90,
+                              position: 'insideLeft',
+                            }}
+                          />
                           <Tooltip />
                           <Legend />
                           <Bar dataKey='mean' fill='#0ea5e9' />
@@ -227,6 +300,13 @@ function App() {
                 <article className='chart-card'>
                   <h3>Scatter Plot</h3>
                   {profile.charts.scatter.x_key &&
+                    profile.charts.scatter.y_key && (
+                      <p className='chart-meta'>
+                        {prettyLabel(profile.charts.scatter.y_key)} vs{' '}
+                        {prettyLabel(profile.charts.scatter.x_key)}
+                      </p>
+                    )}
+                  {profile.charts.scatter.x_key &&
                   profile.charts.scatter.y_key &&
                   profile.charts.scatter.data.length > 0 ? (
                     <div className='chart-box'>
@@ -237,11 +317,21 @@ function App() {
                             type='number'
                             dataKey='x'
                             name={profile.charts.scatter.x_key}
+                            label={{
+                              value: scatterXAxisLabel,
+                              position: 'insideBottom',
+                              offset: -6,
+                            }}
                           />
                           <YAxis
                             type='number'
                             dataKey='y'
                             name={profile.charts.scatter.y_key}
+                            label={{
+                              value: scatterYAxisLabel,
+                              angle: -90,
+                              position: 'insideLeft',
+                            }}
                           />
                           <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                           <Scatter
