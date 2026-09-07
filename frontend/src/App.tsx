@@ -1,11 +1,48 @@
 import { useState } from 'react';
 import axios from 'axios';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  ScatterChart,
+  Scatter,
+  Legend,
+} from 'recharts';
+import './App.css';
 
 type DatasetProfile = {
   rows: number;
   columns: number;
   column_names: string[];
+  numeric_columns: string[];
+  missing_values: Record<string, number>;
+  preview: Array<Record<string, string | number>>;
+  charts: {
+    line: {
+      x_key: string;
+      y_key: string | null;
+      data: Array<Record<string, string | number>>;
+    };
+    bar: {
+      x_key: string;
+      series_keys: string[];
+      data: Array<Record<string, string | number>>;
+    };
+    scatter: {
+      x_key: string | null;
+      y_key: string | null;
+      data: Array<Record<string, number>>;
+    };
+  };
 };
+
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,7 +72,7 @@ function App() {
 
     try {
       const response = await axios.post<DatasetProfile>(
-        'http://127.0.0.1:8000/datasets/profile',
+        `${API_BASE_URL}/datasets/profile`,
         formData,
       );
 
@@ -48,42 +85,181 @@ function App() {
   };
 
   return (
-    <div>
-      <header>
+    <div className='app'>
+      <header className='header'>
         <h1>AI Workbench</h1>
         <p>AI-assisted data analysis platform</p>
       </header>
 
-      <main>
-        <section>
+      <main className='main'>
+        <section className='card'>
           <h2>Dataset</h2>
-
-          <input type='file' accept='.csv' onChange={handleFileChange} />
-
-          {file && <p>Selected: {file.name}</p>}
-
-          <button onClick={handleUpload} disabled={loading}>
+          <input
+            className='file-input'
+            type='file'
+            accept='.csv'
+            onChange={handleFileChange}
+          />
+          {file && <p className='hint'>Selected: {file.name}</p>}
+          <button className='action' onClick={handleUpload} disabled={loading}>
             {loading ? 'Analyzing...' : 'Analyze dataset'}
           </button>
-
-          {error && <p>{error}</p>}
+          {error && <p className='error'>{error}</p>}
         </section>
 
         {profile && (
-          <section>
-            <h2>Dataset Overview</h2>
+          <>
+            <section className='card'>
+              <h2>Dataset Overview</h2>
+              <div className='stats-grid'>
+                <div className='stat'>
+                  <p className='label'>Rows</p>
+                  <p className='value'>{profile.rows.toLocaleString()}</p>
+                </div>
+                <div className='stat'>
+                  <p className='label'>Columns</p>
+                  <p className='value'>{profile.columns}</p>
+                </div>
+                <div className='stat'>
+                  <p className='label'>Numeric Columns</p>
+                  <p className='value'>{profile.numeric_columns.length}</p>
+                </div>
+                <div className='stat'>
+                  <p className='label'>Missing Values</p>
+                  <p className='value'>
+                    {Object.values(profile.missing_values).reduce(
+                      (accumulator, current) => accumulator + current,
+                      0,
+                    )}
+                  </p>
+                </div>
+              </div>
 
-            <p>Rows: {profile.rows.toLocaleString()}</p>
-            <p>Columns: {profile.columns}</p>
+              <h3>Columns</h3>
+              <ul className='column-list'>
+                {profile.column_names.map((column) => (
+                  <li key={column}>{column}</li>
+                ))}
+              </ul>
+            </section>
 
-            <h3>Columns</h3>
+            <section className='card'>
+              <h2>Data Preview</h2>
+              <div className='table-wrap'>
+                <table>
+                  <thead>
+                    <tr>
+                      {profile.column_names.map((column) => (
+                        <th key={column}>{column}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profile.preview.map((row, index) => (
+                      <tr key={`preview-${index}`}>
+                        {profile.column_names.map((column) => (
+                          <td key={`${column}-${index}`}>
+                            {String(row[column] ?? '')}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-            <ul>
-              {profile.column_names.map((column) => (
-                <li key={column}>{column}</li>
-              ))}
-            </ul>
-          </section>
+            <section className='card'>
+              <h2>Charts</h2>
+
+              <div className='chart-grid'>
+                <article className='chart-card'>
+                  <h3>Line Chart</h3>
+                  {profile.charts.line.y_key &&
+                  profile.charts.line.data.length > 0 ? (
+                    <div className='chart-box'>
+                      <ResponsiveContainer width='100%' height='100%'>
+                        <LineChart data={profile.charts.line.data}>
+                          <CartesianGrid strokeDasharray='3 3' />
+                          <XAxis dataKey={profile.charts.line.x_key} />
+                          <YAxis />
+                          <Tooltip />
+                          <Line
+                            type='monotone'
+                            dataKey={profile.charts.line.y_key}
+                            stroke='#2563eb'
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className='hint'>
+                      Not enough numeric data for a line chart.
+                    </p>
+                  )}
+                </article>
+
+                <article className='chart-card'>
+                  <h3>Bar Chart</h3>
+                  {profile.charts.bar.data.length > 0 ? (
+                    <div className='chart-box'>
+                      <ResponsiveContainer width='100%' height='100%'>
+                        <BarChart data={profile.charts.bar.data}>
+                          <CartesianGrid strokeDasharray='3 3' />
+                          <XAxis dataKey={profile.charts.bar.x_key} />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey='mean' fill='#0ea5e9' />
+                          <Bar dataKey='median' fill='#22c55e' />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className='hint'>
+                      Not enough numeric data for a bar chart.
+                    </p>
+                  )}
+                </article>
+
+                <article className='chart-card'>
+                  <h3>Scatter Plot</h3>
+                  {profile.charts.scatter.x_key &&
+                  profile.charts.scatter.y_key &&
+                  profile.charts.scatter.data.length > 0 ? (
+                    <div className='chart-box'>
+                      <ResponsiveContainer width='100%' height='100%'>
+                        <ScatterChart>
+                          <CartesianGrid strokeDasharray='3 3' />
+                          <XAxis
+                            type='number'
+                            dataKey='x'
+                            name={profile.charts.scatter.x_key}
+                          />
+                          <YAxis
+                            type='number'
+                            dataKey='y'
+                            name={profile.charts.scatter.y_key}
+                          />
+                          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                          <Scatter
+                            data={profile.charts.scatter.data}
+                            fill='#f97316'
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className='hint'>
+                      Not enough numeric data for a scatter plot.
+                    </p>
+                  )}
+                </article>
+              </div>
+            </section>
+          </>
         )}
       </main>
     </div>
