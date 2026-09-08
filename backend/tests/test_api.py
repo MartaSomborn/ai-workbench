@@ -102,3 +102,45 @@ def test_ask_dataset_ollama_falls_back_to_mock(monkeypatch):
     assert payload["requested_provider"] == "ollama"
     assert "warning" in payload
     assert isinstance(payload["analysis"].get("findings", []), list)
+
+
+def test_ask_dataset_normalizes_unstructured_provider_output(monkeypatch):
+    class BrokenProvider:
+        name = "broken"
+
+        def analyze(self, question, context):
+            return {
+                "summary": 123,
+                "findings": "not-a-list",
+                "recommendations": None,
+                "evidence": [{"metric": "rows"}, "bad-item"],
+            }
+
+    monkeypatch.setattr("app.main.get_ai_provider", lambda: BrokenProvider())
+
+    csv_content = b"""timestamp,temperature,energy_consumption,occupancy
+2026-01-01 08:00,12.3,421,34
+2026-01-01 09:00,13.1,452,41
+"""
+
+    response = client.post(
+        "/datasets/ask",
+        data={"question": "test question"},
+        files={
+            "file": (
+                "energy.csv",
+                BytesIO(csv_content),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["provider"] == "broken"
+    assert payload["analysis"]["summary"] == "123"
+    assert payload["analysis"]["findings"] == []
+    assert payload["analysis"]["recommendations"] == []
+    assert payload["analysis"]["evidence"][0]["metric"] == "rows"
