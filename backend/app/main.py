@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
-from app.ai import get_ai_provider
+from app.ai import MockProvider, get_ai_provider
 from app.analysis.profiler import profile_dataframe
 from app.analysis.question_answering import build_analysis_context
 
@@ -39,10 +39,19 @@ async def ask_dataset(question: str = Form(...), file: UploadFile = File(...)):
     context = build_analysis_context(df)
 
     provider = get_ai_provider()
-    analysis = provider.analyze(question=question, context=context)
-
-    return {
+    response_payload = {
         "provider": provider.name,
         "question": question,
-        "analysis": analysis,
     }
+
+    try:
+        analysis = provider.analyze(question=question, context=context)
+    except RuntimeError as exc:
+        fallback_provider = MockProvider()
+        analysis = fallback_provider.analyze(question=question, context=context)
+        response_payload["provider"] = fallback_provider.name
+        response_payload["requested_provider"] = provider.name
+        response_payload["warning"] = str(exc)
+
+    response_payload["analysis"] = analysis
+    return response_payload

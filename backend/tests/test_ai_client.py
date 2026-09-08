@@ -1,4 +1,4 @@
-from app.ai.client import MockProvider, get_ai_provider
+from app.ai.client import MockProvider, OllamaProvider, get_ai_provider
 
 
 def test_get_ai_provider_defaults_to_mock(monkeypatch):
@@ -28,3 +28,23 @@ def test_mock_provider_returns_structured_response():
     assert isinstance(result["findings"], list)
     assert isinstance(result["recommendations"], list)
     assert isinstance(result["evidence"], list)
+
+
+def test_get_ai_provider_uses_ollama_when_configured(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "ollama")
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:7b")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+    provider = get_ai_provider()
+
+    assert isinstance(provider, OllamaProvider)
+    assert provider.name == "ollama"
+
+
+def test_get_ai_provider_falls_back_to_mock_for_unknown_provider(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "unknown-provider")
+
+    provider = get_ai_provider()
+
+    assert isinstance(provider, MockProvider)
+    assert provider.name == "mock"
