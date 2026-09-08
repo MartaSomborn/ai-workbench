@@ -1,10 +1,10 @@
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
 
 from app.ai import MockProvider, get_ai_provider
 from app.analysis.profiler import profile_dataframe
 from app.analysis.question_answering import build_analysis_context
+from app.analysis.validation import CSVValidationError, read_validated_csv
 from app.models.ask_response import AskDatasetResponse, StructuredAnalysis
 
 app = FastAPI(
@@ -27,16 +27,30 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.post("/datasets/profile")
+@app.post(
+    "/datasets/profile",
+    responses={400: {"description": "Invalid CSV input."}},
+)
 async def profile_dataset(file: UploadFile = File(...)):
-    df = pd.read_csv(file.file)
+    try:
+        df = read_validated_csv(file.file)
+    except CSVValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return profile_dataframe(df)
 
 
-@app.post("/datasets/ask", response_model=AskDatasetResponse)
+@app.post(
+    "/datasets/ask",
+    response_model=AskDatasetResponse,
+    responses={400: {"description": "Invalid CSV input."}},
+)
 async def ask_dataset(question: str = Form(...), file: UploadFile = File(...)):
-    df = pd.read_csv(file.file)
+    try:
+        df = read_validated_csv(file.file)
+    except CSVValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     context = build_analysis_context(df)
 
     provider = get_ai_provider()

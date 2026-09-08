@@ -144,3 +144,57 @@ def test_ask_dataset_normalizes_unstructured_provider_output(monkeypatch):
     assert payload["analysis"]["findings"] == []
     assert payload["analysis"]["recommendations"] == []
     assert payload["analysis"]["evidence"][0]["metric"] == "rows"
+
+
+def test_profile_dataset_rejects_empty_csv():
+    response = client.post(
+        "/datasets/profile",
+        files={
+            "file": (
+                "empty.csv",
+                BytesIO(b""),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "CSV file is empty."
+
+
+def test_profile_dataset_rejects_all_null_csv():
+    csv_content = b"""temperature,energy_consumption
+,
+,
+"""
+
+    response = client.post(
+        "/datasets/profile",
+        files={
+            "file": (
+                "all_null.csv",
+                BytesIO(csv_content),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "CSV file rows are empty."
+
+
+def test_ask_dataset_rejects_empty_csv():
+    response = client.post(
+        "/datasets/ask",
+        data={"question": "Any insight?"},
+        files={
+            "file": (
+                "empty.csv",
+                BytesIO(b""),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "CSV file is empty."
