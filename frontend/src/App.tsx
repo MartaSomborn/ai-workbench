@@ -56,6 +56,8 @@ type AskResponse = {
   provider: string;
   question: string;
   analysis: AskAnalysis;
+  requested_provider?: string;
+  warning?: string;
 };
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -437,6 +439,13 @@ function App() {
                   <p className='provider-badge'>
                     Provider: {askResult.provider}
                   </p>
+                  {askResult.warning && (
+                    <p className='warning-banner'>
+                      Fallback used: requested{' '}
+                      {askResult.requested_provider ?? 'provider'} but switched
+                      to {askResult.provider}. {askResult.warning}
+                    </p>
+                  )}
                   <h3>Summary</h3>
                   <p>{askResult.analysis.summary}</p>
 

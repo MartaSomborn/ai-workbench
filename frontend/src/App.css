@@ -176,6 +176,16 @@ td {
   font-weight: 600;
 }
 
+.warning-banner {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
