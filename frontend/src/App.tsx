@@ -52,10 +52,18 @@ type AskAnalysis = {
   }>;
 };
 
+type FindingValidation = {
+  finding: string;
+  status: 'supported' | 'unsupported' | 'partial';
+  matched_metrics: string[];
+  rationale: string;
+};
+
 type AskResponse = {
   provider: string;
   question: string;
   analysis: AskAnalysis;
+  validation: FindingValidation[];
   requested_provider?: string;
   warning?: string;
 };
@@ -67,6 +75,12 @@ const prettyLabel = (raw: string): string =>
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+
+const statusLabel: Record<FindingValidation['status'], string> = {
+  supported: 'Supported',
+  partial: 'Partial',
+  unsupported: 'Unsupported',
+};
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -450,11 +464,42 @@ function App() {
                   <p>{askResult.analysis.summary}</p>
 
                   <h3>Findings</h3>
-                  <ul>
-                    {askResult.analysis.findings.map((finding, index) => (
-                      <li key={`finding-${index}`}>{finding}</li>
-                    ))}
-                  </ul>
+                  {askResult.analysis.findings.length > 0 ? (
+                    <ul className='finding-list'>
+                      {askResult.analysis.findings.map((finding, index) => {
+                        const validationItem = askResult.validation[index];
+                        const status = validationItem?.status;
+
+                        return (
+                          <li key={`finding-${index}`} className='finding-item'>
+                            <div className='finding-header'>
+                              <p className='finding-text'>{finding}</p>
+                              {status && (
+                                <span
+                                  className={`status-badge status-${status}`}
+                                >
+                                  {statusLabel[status]}
+                                </span>
+                              )}
+                            </div>
+                            {validationItem?.rationale && (
+                              <p className='finding-rationale'>
+                                {validationItem.rationale}
+                              </p>
+                            )}
+                            {validationItem?.matched_metrics.length > 0 && (
+                              <p className='finding-metrics'>
+                                Matched:{' '}
+                                {validationItem.matched_metrics.join(', ')}
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className='hint'>No findings returned.</p>
+                  )}
 
                   <h3>Recommendations</h3>
                   <ul>
