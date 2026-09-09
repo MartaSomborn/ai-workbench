@@ -71,6 +71,7 @@ def test_ask_dataset_with_mock_provider(monkeypatch):
     assert "summary" in payload["analysis"]
     assert isinstance(payload["analysis"].get("findings", []), list)
     assert isinstance(payload["analysis"].get("evidence", []), list)
+    assert isinstance(payload.get("validation", []), list)
 
 
 def test_ask_dataset_ollama_falls_back_to_mock(monkeypatch):
@@ -144,6 +145,49 @@ def test_ask_dataset_normalizes_unstructured_provider_output(monkeypatch):
     assert payload["analysis"]["findings"] == []
     assert payload["analysis"]["recommendations"] == []
     assert payload["analysis"]["evidence"][0]["metric"] == "rows"
+
+
+def test_ask_dataset_returns_supported_and_unsupported_validation(monkeypatch):
+    class CustomProvider:
+        name = "custom"
+
+        def analyze(self, question, context):
+            return {
+                "summary": "Test summary",
+                "findings": [
+                    "Rows suggest broad dataset coverage.",
+                    "HVAC malfunction was detected.",
+                ],
+                "recommendations": ["Investigate unsupported claims."],
+                "evidence": [{"metric": "rows", "value": 100}],
+            }
+
+    monkeypatch.setattr("app.main.get_ai_provider", lambda: CustomProvider())
+
+    csv_content = b"""temperature,energy_consumption
+12.3,421
+13.1,452
+"""
+
+    response = client.post(
+        "/datasets/ask",
+        data={"question": "validate findings"},
+        files={
+            "file": (
+                "sample.csv",
+                BytesIO(csv_content),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+    validation_results = payload["validation"]
+
+    assert validation_results[0]["status"] == "supported"
+    assert validation_results[1]["status"] == "unsupported"
 
 
 def test_profile_dataset_rejects_empty_csv():

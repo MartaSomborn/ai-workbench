@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai import MockProvider, get_ai_provider
 from app.analysis.profiler import profile_dataframe
+from app.analysis.evidence_validation import validate_findings_against_evidence
 from app.analysis.question_answering import build_analysis_context
 from app.analysis.validation import CSVValidationError, read_validated_csv
 from app.models.ask_response import AskDatasetResponse, StructuredAnalysis
@@ -72,4 +73,10 @@ async def ask_dataset(question: str = Form(...), file: UploadFile = File(...)):
         raw_analysis=raw_analysis,
         fallback_evidence=context.get("evidence", []),
     )
+
+    response_payload["validation"] = validate_findings_against_evidence(
+        findings=response_payload["analysis"].findings,
+        evidence_metrics=[item.metric for item in response_payload["analysis"].evidence],
+    )
+
     return AskDatasetResponse(**response_payload)

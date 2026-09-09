@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -58,9 +59,17 @@ class StructuredAnalysis(BaseModel):
         )
 
 
+class FindingValidation(BaseModel):
+    finding: str
+    status: Literal["supported", "unsupported", "partial"]
+    matched_metrics: list[str] = Field(default_factory=list)
+    rationale: str
+
+
 class AskDatasetResponse(BaseModel):
     provider: str
     question: str
     analysis: StructuredAnalysis
+    validation: list[FindingValidation] = Field(default_factory=list)
     requested_provider: str | None = None
     warning: str | None = None
