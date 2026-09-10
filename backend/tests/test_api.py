@@ -39,6 +39,9 @@ Charlie,28,95
     assert "line" in payload["charts"]
     assert "bar" in payload["charts"]
     assert "scatter" in payload["charts"]
+    assert "anomalies" in payload
+    assert "count" in payload["anomalies"]
+    assert "rate" in payload["anomalies"]
 
 
 def test_ask_dataset_with_mock_provider(monkeypatch):

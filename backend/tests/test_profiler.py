@@ -22,3 +22,7 @@ def test_profile_dataframe():
     assert len(result["charts"]["bar"]["data"]) == 2
     assert result["charts"]["scatter"]["x_key"] == "temperature"
     assert result["charts"]["scatter"]["y_key"] == "energy"
+    assert "anomalies" in result
+    assert "count" in result["anomalies"]
+    assert "rate" in result["anomalies"]
+    assert len(result["anomalies"]["preview_flags"]) == 3

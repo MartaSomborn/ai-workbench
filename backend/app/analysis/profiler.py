@@ -1,5 +1,7 @@
 import pandas as pd
 
+from app.analysis.anomaly import detect_anomalies
+
 
 def profile_dataframe(df: pd.DataFrame) -> dict:
     numeric_df = df.select_dtypes(include="number")
@@ -40,6 +42,8 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
             for _, row in sample.iterrows()
         ]
 
+    anomalies = detect_anomalies(df)
+
     return {
         "rows": len(df),
         "columns": len(df.columns),
@@ -47,6 +51,7 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
         "numeric_columns": numeric_columns,
         "missing_values": missing_values,
         "preview": df.head(10).fillna("").to_dict(orient="records"),
+        "anomalies": anomalies,
         "charts": {
             "line": {
                 "x_key": "index",
