@@ -74,6 +74,16 @@ type AskResponse = {
   warning?: string;
 };
 
+type ReportResponse = {
+  report_id: string;
+  report_path: string;
+  markdown: string;
+  provider: string;
+  question: string;
+  requested_provider?: string;
+  warning?: string;
+};
+
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const prettyLabel = (raw: string): string =>
@@ -97,6 +107,9 @@ function App() {
   const [askLoading, setAskLoading] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const [askResult, setAskResult] = useState<AskResponse | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportResult, setReportResult] = useState<ReportResponse | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -106,6 +119,8 @@ function App() {
     setError(null);
     setAskError(null);
     setAskResult(null);
+    setReportError(null);
+    setReportResult(null);
   };
 
   const handleUpload = async () => {
@@ -119,6 +134,8 @@ function App() {
     setProfile(null);
     setAskError(null);
     setAskResult(null);
+    setReportError(null);
+    setReportResult(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -169,6 +186,53 @@ function App() {
     } finally {
       setAskLoading(false);
     }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!file) {
+      setReportError('Please upload a CSV file first.');
+      return;
+    }
+
+    setReportLoading(true);
+    setReportError(null);
+    setReportResult(null);
+
+    const formData = new FormData();
+    const trimmedQuestion = question.trim();
+    if (trimmedQuestion) {
+      formData.append('question', trimmedQuestion);
+    }
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post<ReportResponse>(
+        `${API_BASE_URL}/datasets/report`,
+        formData,
+      );
+
+      setReportResult(response.data);
+    } catch {
+      setReportError('Could not generate the report.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!reportResult) {
+      return;
+    }
+
+    const blob = new Blob([reportResult.markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${reportResult.report_id}.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
   };
 
   const lineYAxisLabel = profile?.charts.line.y_key
@@ -476,8 +540,18 @@ function App() {
               >
                 {askLoading ? 'Analyzing question...' : 'Analyze question'}
               </button>
+              <button
+                className='action secondary-action'
+                onClick={handleGenerateReport}
+                disabled={reportLoading || loading}
+              >
+                {reportLoading
+                  ? 'Generating report...'
+                  : 'Generate markdown report'}
+              </button>
 
               {askError && <p className='error'>{askError}</p>}
+              {reportError && <p className='error'>{reportError}</p>}
 
               {askResult && (
                 <div className='ask-result'>
@@ -566,6 +640,33 @@ function App() {
                   ) : (
                     <p className='hint'>No evidence returned.</p>
                   )}
+                </div>
+              )}
+
+              {reportResult && (
+                <div className='ask-result'>
+                  <p className='provider-badge'>
+                    Report ID: {reportResult.report_id}
+                  </p>
+                  <p className='hint'>Saved at: {reportResult.report_path}</p>
+                  {reportResult.warning && (
+                    <p className='warning-banner'>
+                      Fallback used: requested{' '}
+                      {reportResult.requested_provider ?? 'provider'} but
+                      switched to {reportResult.provider}.{' '}
+                      {reportResult.warning}
+                    </p>
+                  )}
+                  <button
+                    className='action secondary-action'
+                    onClick={handleDownloadReport}
+                  >
+                    Download .md file
+                  </button>
+                  <details className='report-preview'>
+                    <summary>Preview markdown</summary>
+                    <pre>{reportResult.markdown}</pre>
+                  </details>
                 </div>
               )}
             </section>
