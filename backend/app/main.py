@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,6 +9,8 @@ from app.analysis.evidence_validation import validate_findings_against_evidence
 from app.analysis.question_answering import build_analysis_context
 from app.analysis.validation import CSVValidationError, read_validated_csv
 from app.models.ask_response import AskDatasetResponse, StructuredAnalysis
+from app.models.report_response import ReportResponse
+from app.reports.markdown_report import render_markdown_report, save_markdown_report
 
 app = FastAPI(
     title="AI Workbench",
@@ -21,6 +25,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+DEFAULT_REPORT_QUESTION = (
+    "Provide a concise summary, key findings, and practical recommendations "
+    "for this dataset."
+)
+
+
+def _resolve_report_output_dir() -> Path:
+    return Path(__file__).resolve().parent / "reports" / "generated"
 
 
 @app.get("/health")
@@ -80,3 +93,71 @@ async def ask_dataset(question: str = Form(...), file: UploadFile = File(...)):
     )
 
     return AskDatasetResponse(**response_payload)
+
+
+@app.post(
+    "/datasets/report",
+    response_model=ReportResponse,
+    responses={400: {"description": "Invalid CSV input."}},
+)
+async def generate_report(
+    file: UploadFile = File(...),
+    question: str = Form(DEFAULT_REPORT_QUESTION),
+):
+    try:
+        df = read_validated_csv(file.file)
+    except CSVValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    profile = profile_dataframe(df)
+    context = build_analysis_context(df)
+
+    provider = get_ai_provider()
+    provider_name = provider.name
+    requested_provider: str | None = None
+    warning: str | None = None
+
+    try:
+        raw_analysis = provider.analyze(question=question, context=context)
+    except RuntimeError as exc:
+        fallback_provider = MockProvider()
+        raw_analysis = fallback_provider.analyze(question=question, context=context)
+        requested_provider = provider.name
+        provider_name = fallback_provider.name
+        warning = str(exc)
+
+    analysis = StructuredAnalysis.from_provider_output(
+        raw_analysis=raw_analysis,
+        fallback_evidence=context.get("evidence", []),
+    )
+
+    validation = validate_findings_against_evidence(
+        findings=analysis.findings,
+        evidence_metrics=[item.metric for item in analysis.evidence],
+    )
+
+    markdown = render_markdown_report(
+        dataset_name=file.filename or "dataset.csv",
+        question=question,
+        provider=provider_name,
+        profile=profile,
+        analysis=analysis,
+        validation=validation,
+        warning=warning,
+    )
+
+    report_id, report_path = save_markdown_report(
+        content=markdown,
+        dataset_name=file.filename or "dataset.csv",
+        output_dir=_resolve_report_output_dir(),
+    )
+
+    return ReportResponse(
+        report_id=report_id,
+        report_path=report_path,
+        markdown=markdown,
+        provider=provider_name,
+        question=question,
+        requested_provider=requested_provider,
+        warning=warning,
+    )

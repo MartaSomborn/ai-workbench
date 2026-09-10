@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -245,3 +246,43 @@ def test_ask_dataset_rejects_empty_csv():
 
     assert response.status_code == 400
     assert response.json()["detail"] == "CSV file is empty."
+
+
+def test_generate_report_creates_markdown_file(monkeypatch, tmp_path):
+    monkeypatch.setenv("AI_PROVIDER", "mock")
+    monkeypatch.setattr(
+        "app.main._resolve_report_output_dir",
+        lambda: Path(tmp_path),
+    )
+
+    csv_content = b"""timestamp,temperature,energy_consumption,occupancy
+2026-01-01 08:00,12.3,421,34
+2026-01-01 09:00,13.1,452,41
+2026-01-01 10:00,14.2,470,43
+"""
+
+    response = client.post(
+        "/datasets/report",
+        data={"question": "Give me a concise analysis."},
+        files={
+            "file": (
+                "energy.csv",
+                BytesIO(csv_content),
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["provider"] == "mock"
+    assert payload["report_id"]
+    assert payload["report_path"].endswith(".md")
+    assert "# AI Workbench Report" in payload["markdown"]
+    assert "## Dataset Overview" in payload["markdown"]
+
+    report_path = Path(payload["report_path"])
+    assert report_path.exists()
+    assert "## Findings" in report_path.read_text(encoding="utf-8")
