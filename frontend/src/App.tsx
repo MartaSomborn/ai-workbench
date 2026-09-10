@@ -23,6 +23,12 @@ type DatasetProfile = {
   numeric_columns: string[];
   missing_values: Record<string, number>;
   preview: Array<Record<string, string | number>>;
+  anomalies: {
+    count: number;
+    rate: number;
+    preview_flags: boolean[];
+    numeric_columns_used: string[];
+  };
   charts: {
     line: {
       x_key: string;
@@ -245,6 +251,16 @@ function App() {
                     )}
                   </p>
                 </div>
+                <div className='stat'>
+                  <p className='label'>Anomalies</p>
+                  <p className='value'>{profile.anomalies.count}</p>
+                </div>
+                <div className='stat'>
+                  <p className='label'>Anomaly Rate</p>
+                  <p className='value'>
+                    {(profile.anomalies.rate * 100).toFixed(2)}%
+                  </p>
+                </div>
               </div>
 
               <h3>Columns</h3>
@@ -261,6 +277,7 @@ function App() {
                 <table>
                   <thead>
                     <tr>
+                      <th>Status</th>
                       {profile.column_names.map((column) => (
                         <th key={column}>{column}</th>
                       ))}
@@ -268,7 +285,21 @@ function App() {
                   </thead>
                   <tbody>
                     {profile.preview.map((row, index) => (
-                      <tr key={`preview-${index}`}>
+                      <tr
+                        key={`preview-${index}`}
+                        className={
+                          profile.anomalies.preview_flags[index]
+                            ? 'row-anomaly'
+                            : ''
+                        }
+                      >
+                        <td>
+                          {profile.anomalies.preview_flags[index] ? (
+                            <span className='anomaly-badge'>Anomaly</span>
+                          ) : (
+                            <span className='normal-badge'>Normal</span>
+                          )}
+                        </td>
                         {profile.column_names.map((column) => (
                           <td key={`${column}-${index}`}>
                             {String(row[column] ?? '')}

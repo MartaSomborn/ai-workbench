@@ -111,6 +111,29 @@ td {
   white-space: nowrap;
 }
 
+.row-anomaly td {
+  background: #fff7ed;
+}
+
+.anomaly-badge,
+.normal-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.anomaly-badge {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.normal-badge {
+  color: #166534;
+  background: #dcfce7;
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
