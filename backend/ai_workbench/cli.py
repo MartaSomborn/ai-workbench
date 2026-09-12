@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from app.ai import MockProvider, get_ai_provider
 from app.analysis.evidence_validation import validate_findings_against_evidence
