@@ -1,12 +1,12 @@
-name: CI
+name: PR Check
 
 on:
-  push:
+  pull_request:
     branches: [main]
 
 jobs:
-  backend:
-    name: Backend (ruff + pytest)
+  backend-quick:
+    name: Backend Quick Check
     runs-on: ubuntu-latest
 
     steps:
@@ -25,15 +25,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Lint backend
+      - name: Lint backend quick scope
         run: ruff check backend/ai_workbench backend/tests/test_cli.py
 
-      - name: Test backend
+      - name: Run backend quick tests
         working-directory: backend
-        run: pytest
+        run: pytest tests/test_cli.py tests/test_api.py tests/test_profiler.py tests/test_anomaly.py
 
-  frontend:
-    name: Frontend (lint + build)
+  frontend-quick:
+    name: Frontend Quick Check
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +54,3 @@ jobs:
       - name: Lint frontend
         working-directory: frontend
         run: npm run lint
-
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
