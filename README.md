@@ -4,6 +4,10 @@
 
 AI-assisted data analysis workbench that combines deterministic CSV profiling with structured AI insights, evidence validation, anomaly detection, and report automation.
 
+## Dashboard Preview
+
+![AI Workbench Dashboard](docs/images/ai-workbench-ui.png)
+
 ## Feature Summary
 
 - Upload CSV and get profiling (`rows`, `columns`, missing values, numeric columns)
