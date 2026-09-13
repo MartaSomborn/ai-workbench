@@ -1,5 +1,32 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import axios from 'axios';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Container,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  Skeleton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import AutoGraphRoundedIcon from '@mui/icons-material/AutoGraphRounded';
+import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,7 +41,6 @@ import {
   Scatter,
   Legend,
 } from 'recharts';
-import './App.css';
 
 type DatasetProfile = {
   rows: number;
@@ -98,7 +124,74 @@ const statusLabel: Record<FindingValidation['status'], string> = {
   unsupported: 'Unsupported',
 };
 
+type SectionContainerProps = {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+};
+
+function SectionContainer({
+  title,
+  subtitle,
+  action,
+  children,
+}: SectionContainerProps) {
+  return (
+    <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 4 }}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={1.5}
+        sx={{ justifyContent: 'space-between' }}
+      >
+        <Box>
+          <Typography variant='h2'>{title}</Typography>
+          {subtitle && (
+            <Typography variant='body2' color='text.secondary'>
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
+        {action}
+      </Stack>
+      <Divider sx={{ my: 2 }} />
+      {children}
+    </Paper>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <Paper
+      variant='outlined'
+      sx={{
+        p: 1.5,
+        borderRadius: 3,
+        transition: 'all 160ms ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: (theme) => `0 12px 28px ${theme.palette.primary.main}22`,
+        },
+      }}
+    >
+      <Typography variant='caption' color='text.secondary'>
+        {label}
+      </Typography>
+      <Typography variant='h3' sx={{ mt: 0.5 }}>
+        {value}
+      </Typography>
+    </Paper>
+  );
+}
+
 function App() {
+  const theme = useTheme();
   const [file, setFile] = useState<File | null>(null);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -238,170 +331,279 @@ function App() {
   const lineYAxisLabel = profile?.charts.line.y_key
     ? prettyLabel(profile.charts.line.y_key)
     : 'Value';
-  const scatterXAxisLabel = profile?.charts.scatter.x_key
-    ? prettyLabel(profile.charts.scatter.x_key)
-    : 'X';
-  const scatterYAxisLabel = profile?.charts.scatter.y_key
-    ? prettyLabel(profile.charts.scatter.y_key)
-    : 'Y';
+  const totalMissingValues = useMemo(
+    () =>
+      profile
+        ? Object.values(profile.missing_values).reduce(
+            (accumulator, current) => accumulator + current,
+            0,
+          )
+        : 0,
+    [profile],
+  );
+
+  const statusPalette: Record<
+    FindingValidation['status'],
+    'success' | 'warning' | 'error'
+  > = {
+    supported: 'success',
+    partial: 'warning',
+    unsupported: 'error',
+  };
 
   return (
-    <div className='app'>
-      <header className='header'>
-        <h1>AI Workbench</h1>
-        <p>AI-assisted data analysis platform</p>
-      </header>
+    <Box sx={{ pb: 5 }}>
+      <Container
+        maxWidth='xl'
+        sx={{ py: { xs: 3, md: 5 }, display: 'grid', gap: 3 }}
+      >
+        <Paper
+          sx={{
+            p: { xs: 2.5, md: 3.5 },
+            borderRadius: 5,
+            background: `linear-gradient(125deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 55%, ${theme.palette.secondary.main} 120%)`,
+            color: 'common.white',
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ justifyContent: 'space-between' }}
+          >
+            <Box>
+              <Typography variant='h1' color='common.white'>
+                AI Workbench Dashboard
+              </Typography>
+              <Typography sx={{ opacity: 0.92 }}>
+                Beautiful analytics for CSV profiling, anomaly detection, and
+                evidence-backed AI insights.
+              </Typography>
+            </Box>
+            <Stack
+              direction='row'
+              spacing={1}
+              sx={{ alignItems: 'flex-start' }}
+            >
+              <Chip
+                label='React + TypeScript'
+                color='default'
+                sx={{ bgcolor: '#ffffff22', color: 'common.white' }}
+              />
+              <Chip
+                label='MUI Themed'
+                color='default'
+                sx={{ bgcolor: '#ffffff22', color: 'common.white' }}
+              />
+            </Stack>
+          </Stack>
+        </Paper>
 
-      <main className='main'>
-        <section className='card'>
-          <h2>Dataset</h2>
-          <input
-            className='file-input'
-            type='file'
-            accept='.csv'
-            onChange={handleFileChange}
-          />
-          {file && <p className='hint'>Selected: {file.name}</p>}
-          <button className='action' onClick={handleUpload} disabled={loading}>
-            {loading ? 'Analyzing...' : 'Analyze dataset'}
-          </button>
-          {error && <p className='error'>{error}</p>}
-        </section>
+        <SectionContainer
+          title='Dataset Input'
+          subtitle='Upload your CSV and run instant profiling.'
+          action={
+            <Button
+              variant='contained'
+              startIcon={<AutoGraphRoundedIcon />}
+              onClick={handleUpload}
+              disabled={loading || !file}
+              aria-label='Analyze dataset'
+            >
+              {loading ? 'Analyzing…' : 'Analyze dataset'}
+            </Button>
+          }
+        >
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+          >
+            <Button
+              component='label'
+              variant='outlined'
+              startIcon={<UploadFileRoundedIcon />}
+            >
+              Select CSV
+              <input
+                type='file'
+                accept='.csv'
+                hidden
+                onChange={handleFileChange}
+              />
+            </Button>
+            {file ? (
+              <Chip
+                color='secondary'
+                variant='outlined'
+                label={`Selected: ${file.name}`}
+              />
+            ) : (
+              <Typography variant='body2' color='text.secondary'>
+                No file selected yet.
+              </Typography>
+            )}
+          </Stack>
+          {error && (
+            <Alert severity='error' sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </SectionContainer>
 
         {loading && (
-          <section className='card'>
-            <h2>Charts</h2>
-            <p className='hint'>Preparing chart data from your dataset...</p>
-            <div className='chart-grid'>
-              <article className='chart-card chart-loading'>
-                <h3>Line Chart</h3>
-                <div className='chart-skeleton' />
-              </article>
-              <article className='chart-card chart-loading'>
-                <h3>Bar Chart</h3>
-                <div className='chart-skeleton' />
-              </article>
-              <article className='chart-card chart-loading'>
-                <h3>Scatter Plot</h3>
-                <div className='chart-skeleton' />
-              </article>
-            </div>
-          </section>
+          <SectionContainer
+            title='Loading analytics'
+            subtitle='Preparing charts and profile details...'
+          >
+            <Stack spacing={1.5}>
+              <Skeleton variant='rounded' height={38} />
+              <Skeleton variant='rounded' height={320} />
+              <Skeleton variant='rounded' height={320} />
+            </Stack>
+          </SectionContainer>
+        )}
+
+        {!loading && !profile && (
+          <Paper sx={{ p: 4, borderRadius: 4, textAlign: 'center' }}>
+            <InsightsRoundedIcon color='primary' sx={{ fontSize: 44 }} />
+            <Typography variant='h2' sx={{ mt: 1 }}>
+              Ready for analysis
+            </Typography>
+            <Typography color='text.secondary' sx={{ mt: 1 }}>
+              Upload a CSV and click <strong>Analyze dataset</strong> to unlock
+              charts, findings, and report automation.
+            </Typography>
+          </Paper>
         )}
 
         {profile && (
           <>
-            <section className='card'>
-              <h2>Dataset Overview</h2>
-              <div className='stats-grid'>
-                <div className='stat'>
-                  <p className='label'>Rows</p>
-                  <p className='value'>{profile.rows.toLocaleString()}</p>
-                </div>
-                <div className='stat'>
-                  <p className='label'>Columns</p>
-                  <p className='value'>{profile.columns}</p>
-                </div>
-                <div className='stat'>
-                  <p className='label'>Numeric Columns</p>
-                  <p className='value'>{profile.numeric_columns.length}</p>
-                </div>
-                <div className='stat'>
-                  <p className='label'>Missing Values</p>
-                  <p className='value'>
-                    {Object.values(profile.missing_values).reduce(
-                      (accumulator, current) => accumulator + current,
-                      0,
-                    )}
-                  </p>
-                </div>
-                <div className='stat'>
-                  <p className='label'>Anomalies</p>
-                  <p className='value'>{profile.anomalies.count}</p>
-                </div>
-                <div className='stat'>
-                  <p className='label'>Anomaly Rate</p>
-                  <p className='value'>
-                    {(profile.anomalies.rate * 100).toFixed(2)}%
-                  </p>
-                </div>
-              </div>
+            <SectionContainer
+              title='Dataset Overview'
+              subtitle='Key quality and shape indicators from the uploaded data.'
+            >
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                  gap: 1.5,
+                }}
+              >
+                <MetricCard
+                  label='Rows'
+                  value={profile.rows.toLocaleString()}
+                />
+                <MetricCard label='Columns' value={profile.columns} />
+                <MetricCard
+                  label='Numeric Columns'
+                  value={profile.numeric_columns.length}
+                />
+                <MetricCard label='Missing Values' value={totalMissingValues} />
+                <MetricCard label='Anomalies' value={profile.anomalies.count} />
+                <MetricCard
+                  label='Anomaly Rate'
+                  value={`${(profile.anomalies.rate * 100).toFixed(2)}%`}
+                />
+              </Box>
 
-              <h3>Columns</h3>
-              <ul className='column-list'>
+              <Typography variant='h3' sx={{ mt: 2.5, mb: 1 }}>
+                Columns
+              </Typography>
+              <Stack direction='row' spacing={1} sx={{ flexWrap: 'wrap' }}>
                 {profile.column_names.map((column) => (
-                  <li key={column}>{column}</li>
+                  <Chip key={column} label={column} variant='outlined' />
                 ))}
-              </ul>
-            </section>
+              </Stack>
+            </SectionContainer>
 
-            <section className='card'>
-              <h2>Data Preview</h2>
-              <div className='table-wrap'>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Status</th>
+            <SectionContainer
+              title='Data Preview'
+              subtitle='First rows with anomaly status indicators.'
+            >
+              <TableContainer
+                component={Paper}
+                variant='outlined'
+                sx={{ borderRadius: 3 }}
+              >
+                <Table size='small'>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Status</TableCell>
                       {profile.column_names.map((column) => (
-                        <th key={column}>{column}</th>
+                        <TableCell key={column}>{column}</TableCell>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.preview.map((row, index) => (
-                      <tr
-                        key={`preview-${index}`}
-                        className={
-                          profile.anomalies.preview_flags[index]
-                            ? 'row-anomaly'
-                            : ''
-                        }
-                      >
-                        <td>
-                          {profile.anomalies.preview_flags[index] ? (
-                            <span className='anomaly-badge'>Anomaly</span>
-                          ) : (
-                            <span className='normal-badge'>Normal</span>
-                          )}
-                        </td>
-                        {profile.column_names.map((column) => (
-                          <td key={`${column}-${index}`}>
-                            {String(row[column] ?? '')}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {profile.preview.map((row, index) => {
+                      const isAnomaly = profile.anomalies.preview_flags[index];
+                      return (
+                        <TableRow
+                          hover
+                          key={`preview-${index}`}
+                          sx={
+                            isAnomaly
+                              ? {
+                                  bgcolor: `${theme.palette.warning.light}2A`,
+                                  '&:hover': {
+                                    bgcolor: `${theme.palette.warning.light}44`,
+                                  },
+                                }
+                              : undefined
+                          }
+                        >
+                          <TableCell>
+                            <Chip
+                              size='small'
+                              color={isAnomaly ? 'warning' : 'success'}
+                              label={isAnomaly ? 'Anomaly' : 'Normal'}
+                            />
+                          </TableCell>
+                          {profile.column_names.map((column) => (
+                            <TableCell key={`${column}-${index}`}>
+                              {String(row[column] ?? '')}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </SectionContainer>
 
-            <section className='card'>
-              <h2>Charts</h2>
-
-              <div className='chart-grid'>
-                <article className='chart-card'>
-                  <h3>Line Chart</h3>
-                  {profile.charts.line.y_key && (
-                    <p className='chart-meta'>
-                      {prettyLabel(profile.charts.line.y_key)} trend by sample
-                      index
-                    </p>
-                  )}
+            <SectionContainer
+              title='Charts'
+              subtitle='Beautiful chart views generated from numeric columns.'
+            >
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    lg: 'repeat(3, minmax(0, 1fr))',
+                  },
+                  gap: 1.5,
+                }}
+              >
+                <Paper variant='outlined' sx={{ p: 2, borderRadius: 3 }}>
+                  <Typography variant='h3'>Line Chart</Typography>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ mb: 1 }}
+                  >
+                    {profile.charts.line.y_key
+                      ? `${prettyLabel(profile.charts.line.y_key)} trend by sample index`
+                      : 'Not enough numeric data for this chart.'}
+                  </Typography>
                   {profile.charts.line.y_key &&
                   profile.charts.line.data.length > 0 ? (
-                    <div className='chart-box'>
+                    <Box sx={{ height: 280 }}>
                       <ResponsiveContainer width='100%' height='100%'>
                         <LineChart data={profile.charts.line.data}>
                           <CartesianGrid strokeDasharray='3 3' />
-                          <XAxis
-                            dataKey={profile.charts.line.x_key}
-                            label={{
-                              value: 'Sample Index',
-                              position: 'insideBottom',
-                              offset: -6,
-                            }}
-                          />
+                          <XAxis dataKey={profile.charts.line.x_key} />
                           <YAxis
                             label={{
                               value: lineYAxisLabel,
@@ -413,72 +615,74 @@ function App() {
                           <Line
                             type='monotone'
                             dataKey={profile.charts.line.y_key}
-                            stroke='#2563eb'
-                            strokeWidth={2}
+                            stroke={theme.palette.primary.main}
+                            strokeWidth={2.5}
                             dot={false}
                           />
                         </LineChart>
                       </ResponsiveContainer>
-                    </div>
+                    </Box>
                   ) : (
-                    <p className='hint'>
+                    <Alert severity='info' variant='outlined'>
                       Not enough numeric data for a line chart.
-                    </p>
+                    </Alert>
                   )}
-                </article>
+                </Paper>
 
-                <article className='chart-card'>
-                  <h3>Bar Chart</h3>
-                  <p className='chart-meta'>
-                    Mean and median across numeric columns
-                  </p>
+                <Paper variant='outlined' sx={{ p: 2, borderRadius: 3 }}>
+                  <Typography variant='h3'>Bar Chart</Typography>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ mb: 1 }}
+                  >
+                    Mean and median across numeric columns.
+                  </Typography>
                   {profile.charts.bar.data.length > 0 ? (
-                    <div className='chart-box'>
+                    <Box sx={{ height: 280 }}>
                       <ResponsiveContainer width='100%' height='100%'>
                         <BarChart data={profile.charts.bar.data}>
                           <CartesianGrid strokeDasharray='3 3' />
-                          <XAxis
-                            dataKey={profile.charts.bar.x_key}
-                            label={{
-                              value: 'Column',
-                              position: 'insideBottom',
-                              offset: -6,
-                            }}
-                          />
-                          <YAxis
-                            label={{
-                              value: 'Value',
-                              angle: -90,
-                              position: 'insideLeft',
-                            }}
-                          />
+                          <XAxis dataKey={profile.charts.bar.x_key} />
+                          <YAxis />
                           <Tooltip />
                           <Legend />
-                          <Bar dataKey='mean' fill='#0ea5e9' />
-                          <Bar dataKey='median' fill='#22c55e' />
+                          <Bar
+                            dataKey='mean'
+                            fill={theme.palette.info.main}
+                            radius={[8, 8, 0, 0]}
+                          />
+                          <Bar
+                            dataKey='median'
+                            fill={theme.palette.secondary.main}
+                            radius={[8, 8, 0, 0]}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
-                    </div>
+                    </Box>
                   ) : (
-                    <p className='hint'>
+                    <Alert severity='info' variant='outlined'>
                       Not enough numeric data for a bar chart.
-                    </p>
+                    </Alert>
                   )}
-                </article>
+                </Paper>
 
-                <article className='chart-card'>
-                  <h3>Scatter Plot</h3>
-                  {profile.charts.scatter.x_key &&
-                    profile.charts.scatter.y_key && (
-                      <p className='chart-meta'>
-                        {prettyLabel(profile.charts.scatter.y_key)} vs{' '}
-                        {prettyLabel(profile.charts.scatter.x_key)}
-                      </p>
-                    )}
+                <Paper variant='outlined' sx={{ p: 2, borderRadius: 3 }}>
+                  <Typography variant='h3'>Scatter Plot</Typography>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{ mb: 1 }}
+                  >
+                    {profile.charts.scatter.x_key &&
+                    profile.charts.scatter.y_key
+                      ? `${prettyLabel(profile.charts.scatter.y_key)} vs ${prettyLabel(profile.charts.scatter.x_key)}`
+                      : 'Not enough numeric data for this chart.'}
+                  </Typography>
                   {profile.charts.scatter.x_key &&
                   profile.charts.scatter.y_key &&
                   profile.charts.scatter.data.length > 0 ? (
-                    <div className='chart-box'>
+                    <Box sx={{ height: 280 }}>
                       <ResponsiveContainer width='100%' height='100%'>
                         <ScatterChart>
                           <CartesianGrid strokeDasharray='3 3' />
@@ -486,194 +690,286 @@ function App() {
                             type='number'
                             dataKey='x'
                             name={profile.charts.scatter.x_key}
-                            label={{
-                              value: scatterXAxisLabel,
-                              position: 'insideBottom',
-                              offset: -6,
-                            }}
                           />
                           <YAxis
                             type='number'
                             dataKey='y'
                             name={profile.charts.scatter.y_key}
-                            label={{
-                              value: scatterYAxisLabel,
-                              angle: -90,
-                              position: 'insideLeft',
-                            }}
                           />
                           <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                           <Scatter
                             data={profile.charts.scatter.data}
-                            fill='#f97316'
+                            fill={theme.palette.warning.main}
                           />
                         </ScatterChart>
                       </ResponsiveContainer>
-                    </div>
+                    </Box>
                   ) : (
-                    <p className='hint'>
+                    <Alert severity='info' variant='outlined'>
                       Not enough numeric data for a scatter plot.
-                    </p>
+                    </Alert>
                   )}
-                </article>
-              </div>
-            </section>
+                </Paper>
+              </Box>
+            </SectionContainer>
 
-            <section className='card'>
-              <h2>Ask Your Dataset</h2>
-              <p className='hint'>
-                Ask a natural-language question using the uploaded CSV.
-              </p>
-
-              <textarea
-                className='ask-input'
+            <SectionContainer
+              title='Ask Your Dataset'
+              subtitle='Generate structured insights and markdown reports from your uploaded data.'
+              action={
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <Button
+                    variant='contained'
+                    onClick={handleAskDataset}
+                    disabled={askLoading || loading || !file}
+                  >
+                    {askLoading ? 'Analyzing question…' : 'Analyze question'}
+                  </Button>
+                  <Button
+                    variant='outlined'
+                    startIcon={<DescriptionRoundedIcon />}
+                    onClick={handleGenerateReport}
+                    disabled={reportLoading || loading || !file}
+                  >
+                    {reportLoading
+                      ? 'Generating report…'
+                      : 'Generate markdown report'}
+                  </Button>
+                </Stack>
+              }
+            >
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
                 placeholder='What factors are related to high energy consumption?'
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                rows={3}
+                helperText='Use a specific question for better findings.'
               />
 
-              <button
-                className='action'
-                onClick={handleAskDataset}
-                disabled={askLoading || loading}
-              >
-                {askLoading ? 'Analyzing question...' : 'Analyze question'}
-              </button>
-              <button
-                className='action secondary-action'
-                onClick={handleGenerateReport}
-                disabled={reportLoading || loading}
-              >
-                {reportLoading
-                  ? 'Generating report...'
-                  : 'Generate markdown report'}
-              </button>
-
-              {askError && <p className='error'>{askError}</p>}
-              {reportError && <p className='error'>{reportError}</p>}
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                {askError && <Alert severity='error'>{askError}</Alert>}
+                {reportError && <Alert severity='error'>{reportError}</Alert>}
+              </Stack>
 
               {askResult && (
-                <div className='ask-result'>
-                  <p className='provider-badge'>
-                    Provider: {askResult.provider}
-                  </p>
+                <Paper variant='outlined' sx={{ mt: 2, p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction='row'
+                    spacing={1}
+                    sx={{ justifyContent: 'space-between', flexWrap: 'wrap' }}
+                  >
+                    <Chip
+                      color='info'
+                      variant='outlined'
+                      label={`Provider: ${askResult.provider}`}
+                    />
+                    <Typography variant='caption' color='text.secondary'>
+                      Question: {askResult.question}
+                    </Typography>
+                  </Stack>
                   {askResult.warning && (
-                    <p className='warning-banner'>
+                    <Alert severity='warning' sx={{ mt: 1.5 }}>
                       Fallback used: requested{' '}
                       {askResult.requested_provider ?? 'provider'} but switched
                       to {askResult.provider}. {askResult.warning}
-                    </p>
+                    </Alert>
                   )}
-                  <h3>Summary</h3>
-                  <p>{askResult.analysis.summary}</p>
 
-                  <h3>Findings</h3>
+                  <Typography variant='h3' sx={{ mt: 2 }}>
+                    Summary
+                  </Typography>
+                  <Typography color='text.secondary' sx={{ mt: 0.75 }}>
+                    {askResult.analysis.summary}
+                  </Typography>
+
+                  <Typography variant='h3' sx={{ mt: 2 }}>
+                    Findings
+                  </Typography>
                   {askResult.analysis.findings.length > 0 ? (
-                    <ul className='finding-list'>
+                    <List dense disablePadding sx={{ mt: 0.5 }}>
                       {askResult.analysis.findings.map((finding, index) => {
                         const validationItem = askResult.validation[index];
                         const status = validationItem?.status;
 
                         return (
-                          <li key={`finding-${index}`} className='finding-item'>
-                            <div className='finding-header'>
-                              <p className='finding-text'>{finding}</p>
-                              {status && (
-                                <span
-                                  className={`status-badge status-${status}`}
-                                >
-                                  {statusLabel[status]}
-                                </span>
-                              )}
-                            </div>
-                            {validationItem?.rationale && (
-                              <p className='finding-rationale'>
-                                {validationItem.rationale}
-                              </p>
+                          <ListItem
+                            key={`finding-${index}`}
+                            sx={{
+                              border: `1px solid ${theme.palette.divider}`,
+                              borderRadius: 2,
+                              alignItems: 'flex-start',
+                              my: 0.75,
+                              px: 1.5,
+                              py: 1.2,
+                            }}
+                          >
+                            <ListItemText
+                              primary={finding}
+                              secondary={
+                                <>
+                                  {validationItem?.rationale && (
+                                    <Typography
+                                      variant='body2'
+                                      color='text.secondary'
+                                      sx={{ mt: 0.6 }}
+                                    >
+                                      {validationItem.rationale}
+                                    </Typography>
+                                  )}
+                                  {validationItem?.matched_metrics.length ? (
+                                    <Typography
+                                      variant='caption'
+                                      color='text.secondary'
+                                    >
+                                      Matched:{' '}
+                                      {validationItem.matched_metrics.join(
+                                        ', ',
+                                      )}
+                                    </Typography>
+                                  ) : null}
+                                </>
+                              }
+                            />
+                            {status && (
+                              <Chip
+                                size='small'
+                                color={statusPalette[status]}
+                                label={statusLabel[status]}
+                                sx={{ ml: 1 }}
+                              />
                             )}
-                            {validationItem?.matched_metrics.length > 0 && (
-                              <p className='finding-metrics'>
-                                Matched:{' '}
-                                {validationItem.matched_metrics.join(', ')}
-                              </p>
-                            )}
-                          </li>
+                          </ListItem>
                         );
                       })}
-                    </ul>
+                    </List>
                   ) : (
-                    <p className='hint'>No findings returned.</p>
+                    <Alert severity='info' variant='outlined' sx={{ mt: 1 }}>
+                      No findings returned.
+                    </Alert>
                   )}
 
-                  <h3>Recommendations</h3>
-                  <ul>
-                    {askResult.analysis.recommendations.map(
-                      (recommendation, index) => (
-                        <li key={`recommendation-${index}`}>
-                          {recommendation}
-                        </li>
-                      ),
-                    )}
-                  </ul>
+                  <Typography variant='h3' sx={{ mt: 2 }}>
+                    Recommendations
+                  </Typography>
+                  {askResult.analysis.recommendations.length > 0 ? (
+                    <List dense>
+                      {askResult.analysis.recommendations.map(
+                        (recommendation, index) => (
+                          <ListItem
+                            key={`recommendation-${index}`}
+                            sx={{ py: 0.4 }}
+                          >
+                            <ListItemText primary={recommendation} />
+                          </ListItem>
+                        ),
+                      )}
+                    </List>
+                  ) : (
+                    <Alert severity='info' variant='outlined' sx={{ mt: 1 }}>
+                      No recommendations returned.
+                    </Alert>
+                  )}
 
-                  <h3>Evidence</h3>
+                  <Typography variant='h3' sx={{ mt: 2 }}>
+                    Evidence
+                  </Typography>
                   {askResult.analysis.evidence.length > 0 ? (
-                    <div className='table-wrap'>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Metric</th>
-                            <th>Value</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                    <TableContainer
+                      component={Paper}
+                      variant='outlined'
+                      sx={{ mt: 1, borderRadius: 2 }}
+                    >
+                      <Table size='small'>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Metric</TableCell>
+                            <TableCell>Value</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
                           {askResult.analysis.evidence.map((item, index) => (
-                            <tr key={`evidence-${item.metric}-${index}`}>
-                              <td>{item.metric}</td>
-                              <td>{String(item.value)}</td>
-                            </tr>
+                            <TableRow
+                              key={`evidence-${item.metric}-${index}`}
+                              hover
+                            >
+                              <TableCell>{item.metric}</TableCell>
+                              <TableCell>{String(item.value)}</TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   ) : (
-                    <p className='hint'>No evidence returned.</p>
+                    <Alert severity='info' variant='outlined' sx={{ mt: 1 }}>
+                      No evidence returned.
+                    </Alert>
                   )}
-                </div>
+                </Paper>
               )}
 
               {reportResult && (
-                <div className='ask-result'>
-                  <p className='provider-badge'>
-                    Report ID: {reportResult.report_id}
-                  </p>
-                  <p className='hint'>Saved at: {reportResult.report_path}</p>
+                <Paper variant='outlined' sx={{ mt: 2, p: 2, borderRadius: 3 }}>
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={1}
+                    sx={{ justifyContent: 'space-between' }}
+                  >
+                    <Box>
+                      <Chip
+                        color='secondary'
+                        label={`Report ID: ${reportResult.report_id}`}
+                      />
+                      <Typography
+                        variant='body2'
+                        color='text.secondary'
+                        sx={{ mt: 1 }}
+                      >
+                        Saved at: {reportResult.report_path}
+                      </Typography>
+                    </Box>
+                    <Button variant='contained' onClick={handleDownloadReport}>
+                      Download .md file
+                    </Button>
+                  </Stack>
+
                   {reportResult.warning && (
-                    <p className='warning-banner'>
+                    <Alert severity='warning' sx={{ mt: 1.5 }}>
                       Fallback used: requested{' '}
                       {reportResult.requested_provider ?? 'provider'} but
                       switched to {reportResult.provider}.{' '}
                       {reportResult.warning}
-                    </p>
+                    </Alert>
                   )}
-                  <button
-                    className='action secondary-action'
-                    onClick={handleDownloadReport}
+
+                  <Typography variant='h3' sx={{ mt: 2 }}>
+                    Markdown Preview
+                  </Typography>
+                  <Box
+                    component='pre'
+                    sx={{
+                      mt: 1,
+                      mb: 0,
+                      p: 2,
+                      maxHeight: 320,
+                      overflow: 'auto',
+                      borderRadius: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      bgcolor: '#0F172A',
+                      color: '#E2E8F0',
+                      fontSize: '0.82rem',
+                    }}
                   >
-                    Download .md file
-                  </button>
-                  <details className='report-preview'>
-                    <summary>Preview markdown</summary>
-                    <pre>{reportResult.markdown}</pre>
-                  </details>
-                </div>
+                    {reportResult.markdown}
+                  </Box>
+                </Paper>
               )}
-            </section>
+            </SectionContainer>
           </>
         )}
-      </main>
-    </div>
+      </Container>
+    </Box>
   );
 }
 
